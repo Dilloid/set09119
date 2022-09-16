@@ -213,7 +213,9 @@ int main(int argc, const char** argv)
 
 	GLfloat timeStart = (GLfloat)glfwGetTime();
 	GLfloat lastFrameTimeSinceStart = timeStart;
-	const float ANIMATION_SPEED = 11.0f; // increase this if you want time to move faster
+	const float ANIMATION_SPEED = 1.0f; // increase this if you want time to move faster
+
+	const glm::vec3 GRAVITY = glm::vec3(0.0f, -9.81f, 0.0f);
 	// Game loop
 	while (!glfwWindowShouldClose(window))
 	{
@@ -245,19 +247,40 @@ int main(int argc, const char** argv)
 
 		// This moves the object at constant speed:
 		//particle.Translate(glm::vec3(0.0f, - 0.3f * deltaTime, 0.0f));
-
+		//particle.SetPosition(glm::vec3(0.0f, particle.Position().y - 0.3f * deltaTime, 0.0f));
 
 		// 1 - make particle fall with accelerating speed using the .Translate method
-
+		glm::vec3 u = glm::vec3(0.0f, -0.03f, 0.0f);
+		glm::vec3 v = u + GRAVITY * deltaTime;
+		glm::vec3 s = ((deltaTime * (u + v)) / 2.0f);
+		particle.Translate(s);
 
 		// 2 - same as above using the .SetPosition method
+		/*
+		float s = (-0.3f * timeSinceStart) + ((GRAVITY.y * sqrt(timeSinceStart)) / 2);
+		float v = -0.3f + (GRAVITY.y * timeSinceStart);
 
+		std::cout <<
+			"Distance: " << s << ", " <<
+			"Velocity: " << v << std::endl;
+
+		glm::vec3 newPosition = glm::vec3(0.0f, s, 0.0f);
+		particle.SetPosition(newPosition);
+		*/
 
 		// 3 - make particle oscillate above the ground plane
-
+		/*
+		glm::vec3 newPosition = glm::vec3(0.0f, sin(timeSinceStart) * 5.0f, 0.0f);
+		particle.SetPosition(newPosition);
+		*/
 
 		// 4 - particle animation from initial velocity and acceleration
+		/*
+		float s = (0.3f * timeSinceStart) + ((GRAVITY.y * sqrt(timeSinceStart)) / 2);
 
+		glm::vec3 newPosition = glm::vec3(0.0f, -s, 0.0f);
+		particle.SetPosition(newPosition);
+		*/
 
 		// 5 - add collision with plane
 
