@@ -49,5 +49,6 @@ private:
 	PhysicsBody ground;
 
 	Particle task1Particle;
-	Particle task2Particles[3];
+	Particle task2Particles[4];
+	Particle task3Particles[4];
 };

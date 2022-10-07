@@ -173,12 +173,21 @@ void Application::MainLoop() {
 	shaderDb.Init();
 	m_physEngine.Init(camera, meshDb, shaderDb);
 
+	/*
 	// Prepare some time bookkeeping
 	const GLfloat timeStart = (GLfloat)glfwGetTime(); 
 	GLfloat lastFrameTimeSinceStart = 0.0f;
+	*/
+
+	double t = 0.0;
+	double dt = 0.001;
+
+	double currentTime = (GLfloat)glfwGetTime();
+	double accumulator = 0.0;
 
 	while (!glfwWindowShouldClose(m_window))
 	{
+		/*
 		// time elapsed since application start
 		GLfloat timeSinceStart = (GLfloat)glfwGetTime() - timeStart;
 
@@ -187,7 +196,14 @@ void Application::MainLoop() {
 
 		// save the current time since start to the previous time since start, so that we can calculate the elapsed time between the different frames
 		lastFrameTimeSinceStart = timeSinceStart;
+		*/
 
+		double newTime = (GLfloat)glfwGetTime();
+		double frameTime = newTime - currentTime;
+		currentTime = newTime;
+
+		accumulator += frameTime;
+		
 		// poll input events
 		glfwPollEvents();
 
@@ -197,7 +213,7 @@ void Application::MainLoop() {
 		latestKeyStateChanges.clear();
 
 		// Update camera
-		DoMovement(deltaTime);
+		DoMovement(dt);
 
 		// Clear the colorbuffer
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -207,8 +223,13 @@ void Application::MainLoop() {
 		auto projection = glm::perspective(camera.GetZoom(), (GLfloat)m_width / (GLfloat)m_height, 0.1f, 1000.0f);
 		auto view = camera.GetViewMatrix();
 
-		// Update the physics
-		m_physEngine.Update(deltaTime, timeSinceStart);
+		while (accumulator >= dt)
+		{
+			// Update the physics
+			m_physEngine.Update(dt, t);
+			accumulator -= dt;
+			t += dt;
+		}
 
 		// Draw all the objects in the physics engine
 		m_physEngine.Display(view, projection);
