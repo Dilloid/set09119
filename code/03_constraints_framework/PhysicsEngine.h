@@ -19,11 +19,16 @@ public:
 	void HandleInputKey(int keyCode, bool pressed);
 
 	void Task1Init();
-	void Task1Update(float deltaTime, float totalTime); // 5-particle chain
-	// ... rest of the tasks here
+	void Task1Update(float deltaTime, float totalTime);
+	void Task1Display(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+
+	void Task2Init();
+	void Task2Update(float deltaTime, float totalTime);
+	void Task2Display(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
 
 private:
 
 	PhysicsBody ground;
 
+	Particle t1Particle, t2Particles[2];
 };
