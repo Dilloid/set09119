@@ -81,7 +81,13 @@ void PhysicsEngine::Init(Camera& camera, MeshDb& meshDb, ShaderDb& shaderDb)
 		particle.SetShader(defaultShader);
 	}
 
-	Task2Init();
+	for (Particle& particle : t3Particles)
+	{
+		particle.SetMesh(particleMesh);
+		particle.SetShader(defaultShader);
+	}
+
+	Task3Init();
 
 	// Initialise ground
 	ground.SetMesh(groundMesh);
@@ -135,7 +141,7 @@ void PhysicsEngine::Task2Init()
 	t2Particles[0].SetPosition(vec3(0, 5, 0));
 	t2Particles[0].SetVelocity(vec3(0, 0, 0));
 
-	t2Particles[1].SetPosition(vec3(0, 3, 0));
+	t2Particles[1].SetPosition(vec3(1, 3, 0));
 	t2Particles[1].SetVelocity(vec3(0, 0, 0));
 }
 
@@ -144,14 +150,14 @@ void PhysicsEngine::Task2Update(float deltaTime, float totalTime)
 	t2Particles[0].ClearForcesImpulses();
 	t2Particles[1].ClearForcesImpulses();
 
-	auto impulse = CollisionImpulse(t2Particles[1], glm::vec3(0.0f, 5.0f, 0.0f), 5.0f, 1.0f);
+	auto impulse = vec3{ 0 };//CollisionImpulse(t2Particles[1], glm::vec3(0.0f, 5.0f, 0.0f), 5.0f, 1.0f);
 
 	vec3 p = t2Particles[1].Position();
 	vec3 v = t2Particles[1].Velocity();
 
 	Force::Gravity(t2Particles[1]);
 	Force::Drag(t2Particles[1]);
-	Force::Hooke(t2Particles[0], t2Particles[1], 1.0f, 10.0f, 0.01f);
+	Force::Hooke(t2Particles[0], t2Particles[1], 1.0f, 8.0f, 0.01f);
 
 	vec3 acceleration = t2Particles[1].AccumulatedForce() / t2Particles[1].Mass();
 
@@ -169,17 +175,74 @@ void PhysicsEngine::Task2Display(const mat4& viewMatrix, const mat4& projMatrix)
 	}
 }
 
+void PhysicsEngine::Task3Init()
+{
+	int x = -5;
+	int y = 8;
+
+	for (Particle &particle : t3Particles)
+	{
+		particle.SetColor(vec4(1, 0, 0, 1));
+		particle.SetScale(vec3(0.1f));
+
+		particle.SetPosition(vec3(x, 4, 0));
+		particle.SetVelocity(vec3(0, 0, 0));
+
+		x++;
+		y--;
+	}
+}
+
+void PhysicsEngine::Task3Update(float deltaTime, float totalTime)
+{
+	for (Particle &particle : t3Particles)
+		particle.ClearForcesImpulses();
+
+	for (int i = 0; i < 10; i++)
+	{
+		auto impulse =  CollisionImpulse(t3Particles[i], glm::vec3(0.0f, 5.0f, 0.0f), 5.0f, 0.9f);
+
+		vec3 p = t3Particles[i].Position();
+		vec3 v = t3Particles[i].Velocity();
+
+		Force::Gravity(t3Particles[i]);
+		Force::Drag(t3Particles[i]);
+
+		if (i < 10)
+			Force::Hooke(t3Particles[i], t3Particles[i+1], 0.1f, 15.0f, 0.0f);
+
+		t3Particles[0].ClearForcesImpulses();
+		t3Particles[9].ClearForcesImpulses();
+
+		vec3 acceleration = t3Particles[i].AccumulatedForce() / t3Particles[i].Mass();
+
+		SymplecticEuler(p, v, t3Particles[i].Mass(), acceleration, impulse, deltaTime);
+
+		t3Particles[i].SetPosition(p);
+		t3Particles[i].SetVelocity(v);
+	}
+
+}
+
+void PhysicsEngine::Task3Display(const mat4& viewMatrix, const mat4& projMatrix)
+{
+	for (Particle &particle : t3Particles)
+	{
+		particle.Draw(viewMatrix, projMatrix);
+	}
+}
+
 // This is called every frame
 void PhysicsEngine::Update(float deltaTime, float totalTime)
 {
-	Task2Update(deltaTime, totalTime);
+	Task3Update(deltaTime, totalTime);
 }
 
 // This is called every frame, after Update
 void PhysicsEngine::Display(const mat4& viewMatrix, const mat4& projMatrix)
 {
 	ground.Draw(viewMatrix, projMatrix);
-	Task2Display(viewMatrix, projMatrix);
+	Task3Display(viewMatrix, projMatrix);
 }
 
 void PhysicsEngine::HandleInputKey(int keyCode, bool pressed)

@@ -25,10 +25,14 @@ public:
 	void Task2Init();
 	void Task2Update(float deltaTime, float totalTime);
 	void Task2Display(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+	
+	void Task3Init();
+	void Task3Update(float deltaTime, float totalTime);
+	void Task3Display(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
 
 private:
 
 	PhysicsBody ground;
 
-	Particle t1Particle, t2Particles[2];
+	Particle t1Particle, t2Particles[2], t3Particles[10];
 };

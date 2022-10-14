@@ -175,7 +175,7 @@ void Application::MainLoop() {
 	m_physEngine.Init(camera, meshDb, shaderDb);
 
 	double t = 0.0;
-	double dt = 0.01;
+	double dt = 0.0001;
 
 	double currentTime = (GLfloat)glfwGetTime();
 	double accumulator = 0.0;
