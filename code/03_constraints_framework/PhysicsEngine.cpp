@@ -7,10 +7,12 @@ using namespace glm;
 
 const glm::vec3 GRAVITY = glm::vec3(0, -9.81, 0);
 
+Demo activeDemo = Task1;
+
 void SymplecticEuler(vec3& pos, vec3& vel, float mass, const vec3& accel, const vec3& impulse, float dt)
 {
-	vel += dt * accel + (impulse / mass);
-	pos += dt * vel;
+	vel += (1.0f / mass) * ((accel * dt) + impulse);
+	pos += vel * dt;
 }
 
 void ExplicitEuler(vec3& pos, vec3& vel, float mass, const vec3& accel, const vec3& impulse, float dt)
@@ -23,40 +25,18 @@ void ExplicitEuler(vec3& pos, vec3& vel, float mass, const vec3& accel, const ve
 vec3 CollisionImpulse(Particle& pobj, const glm::vec3& cubeCentre, float cubeHalfExtent, float coefficientOfRestitution = 0.9f)
 {
 	vec3 impulse{ 0.0f };
-	vec3 floorN{ 0.0f };
+	vec3 floorN{ 0.0f, 1.0f, 0.0f };
 
-	if (pobj.Position().y <= (cubeCentre.y - cubeHalfExtent)) {
-		pobj.SetPosition(vec3{ pobj.Position().x, (cubeCentre.y - cubeHalfExtent), pobj.Position().z });
-		floorN = { 0.0f, 1.0f, 0.0f };
+	vec3 pos = pobj.Position();
+	float e = coefficientOfRestitution;
+
+	if (pos.y < 0.1f)
+	{
+		pobj.SetPosition({ pos.x, 0.1f, pos.z });
+		float vClose = glm::dot(pobj.Velocity(), floorN);
+		impulse = -(1 + e) * pobj.Mass() * vClose * floorN;
 	}
 
-	if (pobj.Position().y >= (cubeCentre.y + cubeHalfExtent)) {
-		pobj.SetPosition(vec3{ pobj.Position().x, (cubeCentre.y + cubeHalfExtent), pobj.Position().z });
-		floorN = { 0.0f, -1.0f, 0.0f };
-	}
-
-	if (pobj.Position().x <= (cubeCentre.x - cubeHalfExtent)) {
-		pobj.SetPosition(vec3{ (cubeCentre.x - cubeHalfExtent), pobj.Position().y, pobj.Position().z });
-		floorN = { -1.0f, 0.0f, 0.0f };
-	}
-
-	if (pobj.Position().x >= (cubeCentre.x + cubeHalfExtent)) {
-		pobj.SetPosition(vec3{ (cubeCentre.x + cubeHalfExtent), pobj.Position().y, pobj.Position().z });
-		floorN = { 1.0f, 0.0f, 0.0f };
-	}
-
-	if (pobj.Position().z <= (cubeCentre.z - cubeHalfExtent)) {
-		pobj.SetPosition(vec3{ pobj.Position().x, pobj.Position().y, (cubeCentre.z - cubeHalfExtent) });
-		floorN = { 0.0f, 0.0f, -1.0f };
-	}
-
-	if (pobj.Position().z >= (cubeCentre.z + cubeHalfExtent)) {
-		pobj.SetPosition(vec3{ pobj.Position().x, pobj.Position().y, (cubeCentre.z + cubeHalfExtent) });
-		floorN = { 0.0f, 0.0f, 1.0f };
-	}
-
-	float vClose = dot(pobj.Velocity(), floorN);
-	impulse = -(1 + coefficientOfRestitution) * pobj.Mass() * vClose * floorN;
 	return impulse;
 }
 
@@ -72,115 +52,38 @@ void PhysicsEngine::Init(Camera& camera, MeshDb& meshDb, ShaderDb& shaderDb)
 	meshDb.Add("cone", Mesh(MeshDataFromWavefrontObj("resources/models/cone.obj")));
 	
 	auto particleMesh = meshDb.Get("sphere");
-	t1Particle.SetMesh(particleMesh);
-	t1Particle.SetShader(defaultShader);
 
-	for (Particle &particle : t2Particles)
+	for (Particle &particle : t123Particles)
 	{
 		particle.SetMesh(particleMesh);
 		particle.SetShader(defaultShader);
 	}
 
-	for (Particle& particle : t3Particles)
+	for (int y = 0; y < TASK45HEIGHT; y++)
 	{
-		particle.SetMesh(particleMesh);
-		particle.SetShader(defaultShader);
+		for (int x = 0; x < TASK45LENGTH; x++)
+		{
+			t45Particles[y][x].SetMesh(particleMesh);
+			t45Particles[y][x].SetShader(defaultShader);
+		}
 	}
 
-	Task3Init();
+	Task123Init();
 
 	// Initialise ground
 	ground.SetMesh(groundMesh);
 	ground.SetShader(defaultShader);
 	ground.SetScale(vec3(10.0f));
 
-	camera = Camera(vec3(0, 5, 10));
+	camera = Camera(vec3(0, 5, 15));
 }
 
-void PhysicsEngine::Task1Init()
-{
-	t1Particle.SetColor(vec4(1, 0, 0, 1));
-	t1Particle.SetPosition(vec3(0, 5, 0));
-	t1Particle.SetScale(vec3(0.1f));
-	t1Particle.SetVelocity(vec3(1.0f, 0.0f, 5.0f));
-}
-
-void PhysicsEngine::Task1Update(float deltaTime, float totalTime)
-{
-	t1Particle.ClearForcesImpulses();
-
-	auto impulse = CollisionImpulse(t1Particle, glm::vec3(0.0f, 5.0f, 0.0f), 5.0f, 1.0f);
-
-	vec3 p = t1Particle.Position();
-	vec3 v = t1Particle.Velocity();
-
-	Force::Gravity(t1Particle);
-	Force::Drag(t1Particle);
-
-	vec3 acceleration = t1Particle.AccumulatedForce() / t1Particle.Mass();
-
-	SymplecticEuler(p, v, t1Particle.Mass(), acceleration, impulse, deltaTime);
-
-	t1Particle.SetPosition(p);
-	t1Particle.SetVelocity(v);
-}
-
-void PhysicsEngine::Task1Display(const mat4& viewMatrix, const mat4& projMatrix)
-{
-	t1Particle.Draw(viewMatrix, projMatrix);
-}
-
-void PhysicsEngine::Task2Init()
-{
-	for (Particle &particle : t2Particles)
-	{
-		particle.SetColor(vec4(1, 0, 0, 1));
-		particle.SetScale(vec3(0.1f));
-	}
-
-	t2Particles[0].SetPosition(vec3(0, 5, 0));
-	t2Particles[0].SetVelocity(vec3(0, 0, 0));
-
-	t2Particles[1].SetPosition(vec3(1, 3, 0));
-	t2Particles[1].SetVelocity(vec3(0, 0, 0));
-}
-
-void PhysicsEngine::Task2Update(float deltaTime, float totalTime)
-{
-	t2Particles[0].ClearForcesImpulses();
-	t2Particles[1].ClearForcesImpulses();
-
-	auto impulse = vec3{ 0 };//CollisionImpulse(t2Particles[1], glm::vec3(0.0f, 5.0f, 0.0f), 5.0f, 1.0f);
-
-	vec3 p = t2Particles[1].Position();
-	vec3 v = t2Particles[1].Velocity();
-
-	Force::Gravity(t2Particles[1]);
-	Force::Drag(t2Particles[1]);
-	Force::Hooke(t2Particles[0], t2Particles[1], 1.0f, 8.0f, 0.01f);
-
-	vec3 acceleration = t2Particles[1].AccumulatedForce() / t2Particles[1].Mass();
-
-	SymplecticEuler(p, v, t2Particles[1].Mass(), acceleration, impulse, deltaTime);
-
-	t2Particles[1].SetPosition(p);
-	t2Particles[1].SetVelocity(v);
-}
-
-void PhysicsEngine::Task2Display(const mat4& viewMatrix, const mat4& projMatrix)
-{
-	for (Particle &particle : t2Particles)
-	{
-		particle.Draw(viewMatrix, projMatrix);
-	}
-}
-
-void PhysicsEngine::Task3Init()
+void PhysicsEngine::Task123Init()
 {
 	int x = -5;
 	int y = 8;
 
-	for (Particle &particle : t3Particles)
+	for (Particle& particle : t123Particles)
 	{
 		particle.SetColor(vec4(1, 0, 0, 1));
 		particle.SetScale(vec3(0.1f));
@@ -193,62 +96,309 @@ void PhysicsEngine::Task3Init()
 	}
 }
 
-void PhysicsEngine::Task3Update(float deltaTime, float totalTime)
+void PhysicsEngine::Task123Display(const mat4& viewMatrix, const mat4& projMatrix)
 {
-	for (Particle &particle : t3Particles)
-		particle.ClearForcesImpulses();
-
-	for (int i = 0; i < 10; i++)
-	{
-		auto impulse =  CollisionImpulse(t3Particles[i], glm::vec3(0.0f, 5.0f, 0.0f), 5.0f, 0.9f);
-
-		vec3 p = t3Particles[i].Position();
-		vec3 v = t3Particles[i].Velocity();
-
-		Force::Gravity(t3Particles[i]);
-		Force::Drag(t3Particles[i]);
-
-		if (i < 10)
-			Force::Hooke(t3Particles[i], t3Particles[i+1], 0.1f, 15.0f, 0.0f);
-
-		t3Particles[0].ClearForcesImpulses();
-		t3Particles[9].ClearForcesImpulses();
-
-		vec3 acceleration = t3Particles[i].AccumulatedForce() / t3Particles[i].Mass();
-
-		SymplecticEuler(p, v, t3Particles[i].Mass(), acceleration, impulse, deltaTime);
-
-		t3Particles[i].SetPosition(p);
-		t3Particles[i].SetVelocity(v);
-	}
-
-}
-
-void PhysicsEngine::Task3Display(const mat4& viewMatrix, const mat4& projMatrix)
-{
-	for (Particle &particle : t3Particles)
+	for (Particle& particle : t123Particles)
 	{
 		particle.Draw(viewMatrix, projMatrix);
+	}
+}
+
+void PhysicsEngine::Task123Update(float deltaTime, float totalTime)
+{
+	for (Particle& particle : t123Particles)
+		particle.ClearForcesImpulses();
+
+	for (int i = 0; i < TASK123LENGTH; i++)
+	{
+		float rl = RESTLENGTH;
+		float ks = TENSION;
+		float kd = 0.0f;
+		vec3 impulse = vec3{ 0 };
+
+		switch (activeDemo)
+		{
+		default:
+		case Task1:
+			break;
+		case Task2:
+			kd = 0.5f;
+			break;
+		case Task3:
+			impulse = CollisionImpulse(t123Particles[i], glm::vec3(0.0f, 5.0f, 0.0f), 5.0f, 0.8f);
+			kd = 0.5f;
+			break;
+		}
+
+		t123Particles[i].ApplyImpulse(impulse);
+		vec3 p = t123Particles[i].Position();
+		vec3 v = t123Particles[i].Velocity();
+
+		Force::Gravity(t123Particles[i]);
+		Force::Drag(t123Particles[i], vec3{ 0 });
+
+		if (i < TASK123LENGTH-1)
+			Force::Hooke(t123Particles[i], t123Particles[i + 1], rl, ks, kd);
+
+		t123Particles[0].ClearForcesImpulses();
+		t123Particles[TASK123LENGTH-1].ClearForcesImpulses();
+
+		vec3 acceleration = t123Particles[i].AccumulatedForce() / t123Particles[i].Mass();
+
+		SymplecticEuler(p, v, t123Particles[i].Mass(), acceleration, t123Particles[i].AccumulatedImpulse(), deltaTime);
+
+		t123Particles[i].SetPosition(p);
+		t123Particles[i].SetVelocity(v);
+	}
+}
+
+void PhysicsEngine::Task4Init()
+{
+	int posX = -5;
+	int posY = 4;
+	int posZ = -5;
+
+	for (int y = 0; y < TASK45HEIGHT; y++)
+	{
+		for (int x = 0; x < TASK45LENGTH; x++)
+		{
+			t45Particles[y][x].SetColor(vec4(1, 0, 0, 1));
+			t45Particles[y][x].SetScale(vec3(0.1f));
+
+			t45Particles[y][x].SetPosition(vec3(posX, posY, posZ));
+			t45Particles[y][x].SetVelocity(vec3(0, 0, 0));
+
+			posX++;
+		}
+		
+		posX = -5;
+		posZ++;
+	}
+}
+
+void PhysicsEngine::Task4Update(float deltaTime, float totalTime)
+{
+	for (int y = 0; y < TASK45HEIGHT; y++)
+		for (int x = 0; x < TASK45LENGTH; x++)
+			t45Particles[y][x].ClearForcesImpulses();
+
+	for (int y = 0; y < TASK45HEIGHT; y++)
+	{
+		for (int x = 0; x < TASK45LENGTH; x++)
+		{
+			float rl = RESTLENGTH;
+			float ks = 200.0f;
+			float kd = 0.5f;
+			vec3 impulse = CollisionImpulse(t45Particles[y][x], glm::vec3(0.0f, 5.0f, 0.0f), 5.0f, 0.8f);
+
+			t45Particles[y][x].ApplyImpulse(impulse);
+			vec3 p = t45Particles[y][x].Position();
+			vec3 v = t45Particles[y][x].Velocity();
+
+			Force::Gravity(t45Particles[y][x]);
+			Force::Drag(t45Particles[y][x], vec3{ 0 });
+
+			if (x < TASK45LENGTH - 1)
+				Force::Hooke(t45Particles[y][x], t45Particles[y][x + 1], rl, ks, kd);
+			
+			if (y < TASK45HEIGHT - 1)
+				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x], rl, ks, kd);
+
+			if (x > 0 && y < TASK45HEIGHT - 1)
+				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x - 1], rl * 1.4, ks, kd);
+			
+			if (x < TASK45LENGTH - 1 && y < TASK45HEIGHT - 1)
+				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x + 1], rl * 1.4, ks, kd);
+
+			t45Particles[0][0].ClearForcesImpulses();
+			t45Particles[0][TASK45LENGTH-1].ClearForcesImpulses();
+			t45Particles[TASK45HEIGHT-1][0].ClearForcesImpulses();
+			t45Particles[TASK45HEIGHT-1][TASK45LENGTH-1].ClearForcesImpulses();
+			
+			vec3 acceleration = t45Particles[y][x].AccumulatedForce() / t45Particles[y][x].Mass();
+
+			SymplecticEuler(p, v, t45Particles[y][x].Mass(), acceleration, t45Particles[y][x].AccumulatedImpulse(), deltaTime);
+
+			t45Particles[y][x].SetPosition(p);
+			t45Particles[y][x].SetVelocity(v);
+		}
+	}
+}
+
+void PhysicsEngine::Task5Init()
+{
+	int posX = -5;
+	int posY = 10;
+	int posZ = -5;
+
+	for (int y = 0; y < TASK45HEIGHT; y++)
+	{
+		for (int x = 0; x < TASK45LENGTH; x++)
+		{
+			t45Particles[y][x].SetColor(vec4(1, 0, 0, 1));
+			t45Particles[y][x].SetScale(vec3(0.1f));
+
+			t45Particles[y][x].SetPosition(vec3(posX, posY, posZ));
+			t45Particles[y][x].SetVelocity(vec3(0, 0, 0));
+
+			posX++;
+			posZ++;
+		}
+
+		posY--;
+		posX = -5;
+		posZ = -5;
+	}
+}
+
+void PhysicsEngine::Task5Update(float deltaTime, float totalTime)
+{
+	float r = (float)rand() / RAND_MAX;
+
+	for (int y = 0; y < TASK45HEIGHT; y++)
+		for (int x = 0; x < TASK45LENGTH; x++)
+			t45Particles[y][x].ClearForcesImpulses();
+
+	for (int y = 0; y < TASK45HEIGHT; y++)
+	{
+		for (int x = 0; x < TASK45LENGTH; x++)
+		{
+			float rl = RESTLENGTH;
+			float ks = 100.0f;
+			float kd = 0.5f;
+			vec3 impulse = CollisionImpulse(t45Particles[y][x], glm::vec3(0.0f, 5.0f, 0.0f), 5.0f, 0.9f);
+
+			t45Particles[y][x].ApplyImpulse(impulse);
+			vec3 p = t45Particles[y][x].Position();
+			vec3 v = t45Particles[y][x].Velocity();
+
+			Force::Gravity(t45Particles[y][x]);
+			Force::Drag(t45Particles[y][x], vec3(5.0f, 0.0f, -5.0f) * r);
+
+			if (x < TASK45LENGTH - 1)
+				Force::Hooke(t45Particles[y][x], t45Particles[y][x + 1], rl, ks, kd);
+
+			if (y < TASK45HEIGHT - 1)
+				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x], rl, ks, kd);
+
+			if (x > 0 && y < TASK45HEIGHT - 1)
+				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x - 1], rl * 1.4f, ks, kd);
+
+			if (x < TASK45LENGTH - 1 && y < TASK45HEIGHT - 1)
+			{
+				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x + 1], rl * 1.4f, ks, kd);
+
+				/*
+				// Attempted to apply aerodynamic drag to triangles here, but you can disable the
+				// standard version above and uncomment these lines to see how that turned out.
+				Force::Drag(t45Particles[y + 1][x], t45Particles[y + 1][x + 1], t45Particles[y][x], vec3{ 1.0f, 0.0f, -5.0f} * r);
+				Force::Drag(t45Particles[y + 1][x + 1], t45Particles[y][x + 1], t45Particles[y][x], vec3{ 1.0f, 0.0f, -5.0f} * r);
+				*/
+			}
+
+			/*
+			// An attempt at bending constraints. Did not work.
+			Force::Hooke(t45Particles[0][0], t45Particles[0][TASK45LENGTH - 1], rl * TASK45LENGTH, ks, kd);
+			Force::Hooke(t45Particles[TASK45HEIGHT - 1][0], t45Particles[TASK45HEIGHT - 1][TASK45LENGTH - 1], rl * TASK45LENGTH, ks, kd);
+			Force::Hooke(t45Particles[0][0], t45Particles[TASK45HEIGHT - 1][0], rl * TASK45HEIGHT, ks, kd);
+			Force::Hooke(t45Particles[0][TASK45LENGTH - 1], t45Particles[TASK45HEIGHT - 1][TASK45LENGTH - 1], rl * TASK45HEIGHT, ks, kd);
+			*/
+
+			t45Particles[0][0].ClearForcesImpulses();
+			t45Particles[0][TASK45LENGTH - 1].ClearForcesImpulses();
+
+			vec3 acceleration = t45Particles[y][x].AccumulatedForce() / t45Particles[y][x].Mass();
+
+			SymplecticEuler(p, v, t45Particles[y][x].Mass(), acceleration, t45Particles[y][x].AccumulatedImpulse(), deltaTime);
+
+			t45Particles[y][x].SetPosition(p);
+			t45Particles[y][x].SetVelocity(v);
+		}
+	}
+}
+
+void PhysicsEngine::Task45Display(const glm::mat4& viewMatrix, const glm::mat4& projMatrix)
+{
+	for (int y = 0; y < TASK45HEIGHT; y++)
+	{
+		for (int x = 0; x < TASK45LENGTH; x++)
+		{
+			t45Particles[y][x].Draw(viewMatrix, projMatrix);
+		}
 	}
 }
 
 // This is called every frame
 void PhysicsEngine::Update(float deltaTime, float totalTime)
 {
-	Task3Update(deltaTime, totalTime);
+	switch (activeDemo)
+	{
+	default:
+	case Task1:
+	case Task2:
+	case Task3:
+		Task123Update(deltaTime, totalTime);
+		break;
+	case Task4:
+		Task4Update(deltaTime, totalTime);
+		break;
+	case Task5:
+		Task5Update(deltaTime, totalTime);
+		break;
+	}
 }
 
 // This is called every frame, after Update
 void PhysicsEngine::Display(const mat4& viewMatrix, const mat4& projMatrix)
 {
 	ground.Draw(viewMatrix, projMatrix);
-	Task3Display(viewMatrix, projMatrix);
+	
+	switch (activeDemo)
+	{
+	default:
+	case Task1:
+	case Task2:
+	case Task3:
+		Task123Display(viewMatrix, projMatrix);
+		break;
+	case Task4:
+	case Task5:
+		Task45Display(viewMatrix, projMatrix);
+		break;
+}
+
+	ground.Draw(viewMatrix, projMatrix);
 }
 
 void PhysicsEngine::HandleInputKey(int keyCode, bool pressed)
 {
 	switch (keyCode)
 	{
+	case GLFW_KEY_1:
+		printf("Key 1 was %s\n", pressed ? "pressed" : "released");
+		Task123Init();
+		activeDemo = Task1;
+		break;
+	case GLFW_KEY_2:
+		printf("Key 2 was %s\n", pressed ? "pressed" : "released");
+		Task123Init();
+		activeDemo = Task2;
+		break;
+	case GLFW_KEY_3:
+		printf("Key 3 was %s\n", pressed ? "pressed" : "released");
+		Task123Init();
+		activeDemo = Task3;
+		break;
+	case GLFW_KEY_4:
+		printf("Key 4 was %s\n", pressed ? "pressed" : "released");
+		Task4Init();
+		activeDemo = Task4;
+		break;
+	case GLFW_KEY_5:
+		printf("Key 5 was %s\n", pressed ? "pressed" : "released");
+		Task5Init();
+		activeDemo = Task5;
+		break;
 	default:
 		break;
 	}

@@ -175,13 +175,26 @@ void Application::MainLoop() {
 	m_physEngine.Init(camera, meshDb, shaderDb);
 
 	double t = 0.0;
-	double dt = 0.0001;
+	double dt = 0.001;
 
 	double currentTime = (GLfloat)glfwGetTime();
 	double accumulator = 0.0;
 
+	// #########################################
+	// Original deltaTime code for camera
+	const GLfloat timeStart = (GLfloat)glfwGetTime();
+	GLfloat lastFrameTimeSinceStart = 0.0f;
+	// #########################################
+
 	while (!glfwWindowShouldClose(m_window))
 	{
+		// #########################################
+		// Original deltaTime calculation for camera
+		GLfloat timeSinceStart = (GLfloat)glfwGetTime() - timeStart;
+		auto deltaTime = timeSinceStart - lastFrameTimeSinceStart;
+		lastFrameTimeSinceStart = timeSinceStart;
+		// #########################################
+
 		double newTime = (GLfloat)glfwGetTime();
 		double frameTime = newTime - currentTime;
 		currentTime = newTime;
@@ -197,7 +210,7 @@ void Application::MainLoop() {
 		latestKeyStateChanges.clear();
 
 		// Update camera
-		DoMovement(dt);
+		DoMovement(deltaTime);
 
 		// Clear the colorbuffer
 		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
