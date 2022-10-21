@@ -187,7 +187,7 @@ void PhysicsEngine::Task4Update(float deltaTime, float totalTime)
 		for (int x = 0; x < TASK45LENGTH; x++)
 		{
 			float rl = RESTLENGTH;
-			float ks = 200.0f;
+			float ks = 30.0f;
 			float kd = 0.5f;
 			vec3 impulse = CollisionImpulse(t45Particles[y][x], glm::vec3(0.0f, 5.0f, 0.0f), 5.0f, 0.8f);
 
@@ -205,10 +205,10 @@ void PhysicsEngine::Task4Update(float deltaTime, float totalTime)
 				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x], rl, ks, kd);
 
 			if (x > 0 && y < TASK45HEIGHT - 1)
-				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x - 1], rl * 1.4, ks, kd);
+				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x - 1], rl * sqrt(2), ks, kd);
 			
 			if (x < TASK45LENGTH - 1 && y < TASK45HEIGHT - 1)
-				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x + 1], rl * 1.4, ks, kd);
+				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x + 1], rl * sqrt(2), ks, kd);
 
 			t45Particles[0][0].ClearForcesImpulses();
 			t45Particles[0][TASK45LENGTH-1].ClearForcesImpulses();

@@ -56,7 +56,7 @@ void Force::Drag(Particle& p1, Particle& p2, Particle& p3, vec3 vAir)
 	float a = 0.5f * length(x);
 	auto vMag = length(v);
 
-	float area = 1.0f;
+	float area = 0.0f;
 	if (vMag != 0.0f)
 		area = a * (dot(v, n) / vMag);
 
