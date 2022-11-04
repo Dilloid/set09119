@@ -204,11 +204,11 @@ void PhysicsEngine::Task4Update(float deltaTime, float totalTime)
 			if (y < TASK45HEIGHT - 1)
 				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x], rl, ks, kd);
 
-			if (x > 0 && y < TASK45HEIGHT - 1)
-				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x - 1], rl * sqrt(2), ks, kd);
-			
 			if (x < TASK45LENGTH - 1 && y < TASK45HEIGHT - 1)
+			{
+				Force::Hooke(t45Particles[y][x + 1], t45Particles[y + 1][x], rl * sqrt(2), ks, kd);
 				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x + 1], rl * sqrt(2), ks, kd);
+			}
 
 			t45Particles[0][0].ClearForcesImpulses();
 			t45Particles[0][TASK45LENGTH-1].ClearForcesImpulses();
@@ -281,11 +281,9 @@ void PhysicsEngine::Task5Update(float deltaTime, float totalTime)
 			if (y < TASK45HEIGHT - 1)
 				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x], rl, ks, kd);
 
-			if (x > 0 && y < TASK45HEIGHT - 1)
-				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x - 1], rl * 1.4f, ks, kd);
-
 			if (x < TASK45LENGTH - 1 && y < TASK45HEIGHT - 1)
 			{
+				Force::Hooke(t45Particles[y][x + 1], t45Particles[y + 1][x], rl * 1.4f, ks, kd);
 				Force::Hooke(t45Particles[y][x], t45Particles[y + 1][x + 1], rl * 1.4f, ks, kd);
 
 				/*

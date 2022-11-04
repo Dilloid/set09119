@@ -17,7 +17,7 @@ const glm::vec3 GRAVITY = glm::vec3(0, -9.81f, 0);
 bool paused = false;
 bool accelerating = true;
 
-Demo activeDemo = Task2;
+Demo activeDemo = Task3;
 
 void ExplicitEuler(vec3& pos, vec3& vel, float mass, const vec3& accel, const vec3& impulse, float dt)
 {
@@ -55,19 +55,83 @@ void Integrate(RigidBody& rb, float dt, vec3 angAcc)
 void CollisionImpulse(RigidBody& rb, float coefficientOfRestitution)
 {
 	vec3 impulse{ 0.0f };
-	vec3 floorN{ 0.0f, 1.0f, 0.0f };
 
-	vec3 pos = rb.Position();
-	float e = coefficientOfRestitution;
+	vec3 lowestPoint = vec3(0.0f);
 
-	if (pos.y < rb.Scale().y)
+	for (vec3 pos : rb.GetMesh()->Data().positions.data)
 	{
-		rb.SetPosition(vec3(pos.x, rb.Scale().y, pos.z));
+		vec4 localPos = vec4(pos, 1);
+		vec3 worldPos = rb.ModelMatrix() * localPos;
+
+		if (worldPos.y < 0.0f)
+		{
+			if (worldPos.y < lowestPoint.y)
+				lowestPoint = worldPos;
+		}
+	}
+
+	if (lowestPoint.y < 0.0f)
+	{
+		rb.SetPosition(vec3(rb.Position().x, rb.Position().y - lowestPoint.y, rb.Position().z));
+
+		float e = coefficientOfRestitution;
+		vec3 floorN = vec3(0.0f, 1.0f, 0.0f);
+
 		float vClose = glm::dot(rb.Velocity(), floorN);
 		impulse = -(1 + e) * rb.Mass() * vClose * floorN;
 	}
-
+	
 	rb.ApplyImpulse(impulse);
+}
+
+float CollisionImpulseJr(RigidBody& rb, float coefficientOfRestitution)
+{
+	float jr = 0.0f;
+
+	vec3 lowestPoint = vec3(0.0f);
+
+	for (vec3 pos : rb.GetMesh()->Data().positions.data)
+	{
+		vec4 localPos = vec4(pos, 1);
+		vec3 worldPos = rb.ModelMatrix() * localPos;
+
+		if (worldPos.y < 0.0f)
+		{
+			if (worldPos.y < lowestPoint.y)
+				lowestPoint = worldPos;
+		}
+	}
+
+	if (lowestPoint.y < 0.0f)
+	{
+		rb.SetPosition(vec3(rb.Position().x, rb.Position().y - lowestPoint.y, rb.Position().z));
+
+		float e = coefficientOfRestitution;
+
+		vec3 v2 = vec3(0.0f);
+		vec3 w2 = vec3(0.0f);
+		vec3 r2 = normalize(vec3(0.0f) - lowestPoint);
+
+		vec3 v1 = rb.Velocity();
+		vec3 w1 = rb.AngularVelocity();
+		vec3 r1 = normalize(rb.Position() - lowestPoint);
+
+		vec3 vr = v2 + cross(w2, r2) - (v1 + cross(w1, r1));
+
+		vec3 floorN = vec3(0.0f, 1.0f, 0.0f);
+
+		float m = rb.Mass();
+		float m1i = 1 / m;
+
+		mat3 ii = rb.InverseInertia();
+
+		// jr = -(1 + e)vr . floorN / m1i + floorN . ((inverse i1(r1 x floorN)) x r1)
+		vec3 c1 = cross(r1, floorN);
+		vec3 c2 = cross((ii * c1), r1);
+		jr = -(1 + e) * dot(vr, floorN) / (m1i + dot(floorN, c2));
+	}
+
+	return jr;
 }
 
 // This is called once
@@ -92,11 +156,14 @@ void PhysicsEngine::Init(Camera& camera, MeshDb& meshDb, ShaderDb& shaderDb)
 	
 	rbody2.SetMesh(mesh);
 	rbody2.SetShader(defaultShader);
-	
+
 	rbody3.SetMesh(mesh);
 	rbody3.SetShader(defaultShader);
 
-	Task2Init();
+	rbody4.SetMesh(mesh);
+	rbody4.SetShader(defaultShader);
+
+	Task3Init();
 
 	// TODO: Get the mesh and shader for rigidy body
 	camera = Camera(vec3(0, 5, 10));
@@ -114,7 +181,7 @@ void PhysicsEngine::Task1Update(float deltaTime, float totalTime)
 {
 	rbody1.ClearForcesImpulses();
 
-	CollisionImpulse(rbody1, 1.0f);
+	CollisionImpulse(rbody1, 0.8f);
 
 	vec3 p = rbody1.Position();
 	vec3 v = rbody1.Velocity();
@@ -196,6 +263,49 @@ void PhysicsEngine::Task2Display(const mat4& viewMatrix, const mat4& projMatrix)
 	rbody3.Draw(viewMatrix, projMatrix);
 }
 
+void PhysicsEngine::Task3Init()
+{
+	rbody4.SetColor(vec4(0.3f, 0.3f, 0.8f, 1.0f));
+	rbody4.SetPosition(vec3(0, 5, 0));
+	rbody4.SetScale(vec3(1, 3, 1));
+	rbody4.SetVelocity(vec3(0.0f));
+	rbody4.SetAngularVelocity(vec3(0.0f));
+}
+
+void PhysicsEngine::Task3Update(float deltaTime, float totalTime)
+{
+	rbody4.ClearForcesImpulses();
+
+	//CollisionImpulse(rbody4, 0.8f);
+
+	float jr = CollisionImpulseJr(rbody4, 0.8f);
+
+	vec3 p = rbody4.Position();
+	vec3 v = rbody4.Velocity();
+
+	Force::Gravity(rbody4);
+	Force::Drag(rbody4, vec3{ 0 });
+
+	vec3 acceleration = rbody4.AccumulatedForce() / rbody4.Mass();
+
+	//SymplecticEuler(p, v, rbody4.Mass(), acceleration, rbody4.AccumulatedImpulse(), deltaTime);
+	
+	/*
+	rbody4.Velocity() += (jr / rbody4.Mass()) * (acceleration * deltaTime);
+	rbody4.Position() += rbody4.Velocity() * deltaTime;
+	*/
+
+	Integrate(rbody4, deltaTime, vec3(0, 0, 0));
+
+	rbody4.SetPosition(p);
+	rbody4.SetVelocity(v);
+}
+
+void PhysicsEngine::Task3Display(const mat4& viewMatrix, const mat4& projMatrix)
+{
+	rbody4.Draw(viewMatrix, projMatrix);
+}
+
 // This is called every frame
 void PhysicsEngine::Update(float deltaTime, float totalTime)
 {
@@ -209,6 +319,9 @@ void PhysicsEngine::Update(float deltaTime, float totalTime)
 			break;
 		case Task2:
 			Task2Update(deltaTime, totalTime);
+			break;
+		case Task3:
+			Task3Update(deltaTime, totalTime);
 			break;
 		}
 	}
@@ -228,6 +341,9 @@ void PhysicsEngine::Display(const mat4& viewMatrix, const mat4& projMatrix)
 	case Task2:
 		Task2Display(viewMatrix, projMatrix);
 		break;
+	case Task3:
+		Task3Display(viewMatrix, projMatrix);
+		break;
 	}
 }
 
@@ -244,6 +360,11 @@ void PhysicsEngine::HandleInputKey(int keyCode, bool pressed)
 		printf("Key 2 was %s\n", pressed ? "pressed" : "released");
 		Task2Init();
 		activeDemo = Task2;
+		break;
+	case GLFW_KEY_3:
+		printf("Key 3 was %s\n", pressed ? "pressed" : "released");
+		Task3Init();
+		activeDemo = Task3;
 		break;
 	case GLFW_KEY_P:
 		printf("Key P was %s\n", pressed ? "pressed" : "released");

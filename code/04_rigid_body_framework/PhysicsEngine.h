@@ -39,5 +39,5 @@ public:
 
 private:
 	PhysicsBody ground;
-	RigidBody rbody1, rbody2, rbody3;
+	RigidBody rbody1, rbody2, rbody3, rbody4;
 };
