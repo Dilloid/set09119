@@ -278,8 +278,6 @@ void PhysicsEngine::Task3Update(float deltaTime, float totalTime)
 
 	//CollisionImpulse(rbody4, 0.8f);
 
-	float jr = CollisionImpulseJr(rbody4, 0.8f);
-
 	vec3 p = rbody4.Position();
 	vec3 v = rbody4.Velocity();
 
@@ -288,14 +286,13 @@ void PhysicsEngine::Task3Update(float deltaTime, float totalTime)
 
 	vec3 acceleration = rbody4.AccumulatedForce() / rbody4.Mass();
 
-	//SymplecticEuler(p, v, rbody4.Mass(), acceleration, rbody4.AccumulatedImpulse(), deltaTime);
-	
-	/*
-	rbody4.Velocity() += (jr / rbody4.Mass()) * (acceleration * deltaTime);
-	rbody4.Position() += rbody4.Velocity() * deltaTime;
-	*/
-
+	SymplecticEuler(p, v, rbody4.Mass(), acceleration, rbody4.AccumulatedImpulse(), deltaTime);
 	Integrate(rbody4, deltaTime, vec3(0, 0, 0));
+
+	float jr = CollisionImpulseJr(rbody4, 0.8f);
+	
+	v += (jr / rbody4.Mass()) * vec3(0, 1, 0);
+	p += v * deltaTime;
 
 	rbody4.SetPosition(p);
 	rbody4.SetVelocity(v);
