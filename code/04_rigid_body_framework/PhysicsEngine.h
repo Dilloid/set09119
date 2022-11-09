@@ -37,7 +37,15 @@ public:
 	void Task3Update(float deltaTime, float totalTime);
 	void Task3Display(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
 
+	void Task4Init();
+	void Task4Update(float deltaTime, float totalTime);
+	void Task4Display(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+
+	void Task5Init();
+	void Task5Update(float deltaTime, float totalTime);
+	void Task5Display(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+
 private:
 	PhysicsBody ground;
-	RigidBody rbody1, rbody2, rbody3, rbody4;
+	RigidBody rbody1, rbody2, rbody3;
 };

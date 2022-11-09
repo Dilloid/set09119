@@ -149,5 +149,5 @@ public:
 	glm::mat3 InverseInertia();
 private:
 	glm::vec3 m_angularVelocity = glm::vec3(0.0f);
-	//glm::vec3 m_angularAcceleration = glm::vec3(0.0f);
+	glm::vec3 m_angularAcceleration = glm::vec3(0.0f);
 };

@@ -1,12 +1,16 @@
 #include "PhysicsEngine.h"
 
 #include <map>
+#include <list>
 #include <numeric>
+#include <iostream>
 
 #include "Application.h"
 #include "Camera.h"
 #include "Force.h"
 
+#include <glm/glm.hpp>
+#include <glm/gtx/io.hpp>
 #include <glm/gtx/matrix_cross_product.hpp>
 #include <glm/gtx/orthonormalize.hpp>
 
@@ -16,6 +20,7 @@ const glm::vec3 GRAVITY = glm::vec3(0, -9.81f, 0);
 
 bool paused = false;
 bool accelerating = true;
+glm::mat4 upright;
 
 Demo activeDemo = Task3;
 
@@ -37,7 +42,7 @@ void Integrate(RigidBody& rb, float dt, vec3 angAcc)
 	// dt: deltaTime , angAcc : angular acceleration
 	// integration ( rotation )
 	auto newAngVel = rb.AngularVelocity() + dt * angAcc;
-	rb.SetAngularVelocity(newAngVel);
+	//rb.SetAngularVelocity(newAngVel);
 
 	// create skew symmetric matrix for w
 	glm::mat3 angVelSkew = glm::matrixCross3(newAngVel);
@@ -84,11 +89,11 @@ void CollisionImpulse(RigidBody& rb, float coefficientOfRestitution)
 	rb.ApplyImpulse(impulse);
 }
 
-float CollisionImpulseJr(RigidBody& rb, float coefficientOfRestitution)
+float CollisionImpulseJr(RigidBody& rb, vec3& lowestPoint)
 {
 	float jr = 0.0f;
-
-	vec3 lowestPoint = vec3(0.0f);
+	std::list<vec3> contactPoints;
+	contactPoints.clear();
 
 	for (vec3 pos : rb.GetMesh()->Data().positions.data)
 	{
@@ -97,16 +102,47 @@ float CollisionImpulseJr(RigidBody& rb, float coefficientOfRestitution)
 
 		if (worldPos.y < 0.0f)
 		{
+			if (worldPos.y == lowestPoint.y)
+				contactPoints.push_back(worldPos);
+
 			if (worldPos.y < lowestPoint.y)
+			{
+				contactPoints.clear();
+				contactPoints.push_back(worldPos);
 				lowestPoint = worldPos;
+			}
+
 		}
 	}
 
 	if (lowestPoint.y < 0.0f)
 	{
-		rb.SetPosition(vec3(rb.Position().x, rb.Position().y - lowestPoint.y, rb.Position().z));
+		float contacts = contactPoints.size();
 
-		float e = coefficientOfRestitution;
+		if (contacts > 1)
+		{
+			vec3 point = vec3(0.0f);
+
+			//std::cout << "Collision detected! Contact points merged: " << std::endl;
+			for (vec3 p : contactPoints)
+			{
+				point += p;
+				//std::cout << p << std::endl;
+			}
+
+			lowestPoint = point / contacts;
+			//std::cout << "Lowest point changed to " << lowestPoint << std::endl;
+		}
+		else
+		{
+			//std::cout << "Collision detected! Lowest point: " << lowestPoint << std::endl;
+		}
+
+		contactPoints.clear();
+		rb.Translate(vec3(0.0f, -lowestPoint.y, 0.0f));
+		//std::cout << "Translated body by " << vec3(0.0f, -lowestPoint.y, 0.0f) << std::endl << std::endl;
+
+		float e = rb.CoefficientOfRestitution();
 
 		vec3 v2 = vec3(0.0f);
 		vec3 w2 = vec3(0.0f);
@@ -115,20 +151,30 @@ float CollisionImpulseJr(RigidBody& rb, float coefficientOfRestitution)
 		vec3 v1 = rb.Velocity();
 		vec3 w1 = rb.AngularVelocity();
 		vec3 r1 = normalize(rb.Position() - lowestPoint);
+		vec3 vr = v1 + cross(w1, r1);
 
-		vec3 vr = v2 + cross(w2, r2) - (v1 + cross(w1, r1));
+		// vec3 vr = v2 + cross(w2, r2) - (v1 + cross(w1, r1));
+		// This version of the formula made the rigidbody rocket into the air after each collision
 
 		vec3 floorN = vec3(0.0f, 1.0f, 0.0f);
 
 		float m = rb.Mass();
-		float m1i = 1 / m;
+		float m1i = 1.0f / m;
 
 		mat3 ii = rb.InverseInertia();
 
-		// jr = -(1 + e)vr . floorN / m1i + floorN . ((inverse i1(r1 x floorN)) x r1)
-		vec3 c1 = cross(r1, floorN);
-		vec3 c2 = cross((ii * c1), r1);
+		// jr = -(1 + e)vr . floorN / m1i + floorN . (ii(r1 x floorN) x r1)
+		vec3 c1 = cross(r1, floorN), c2 = cross((ii * c1), r1);
 		jr = -(1 + e) * dot(vr, floorN) / (m1i + dot(floorN, c2));
+		
+		/*
+		std::cout << "v1=" << v1 << ", w1=" << w1 << ", r1=" << r1 << std::endl;
+		std::cout << "v2=" << v2 << ", w2=" << w2 << ", r2=" << r2 << std::endl;
+		std::cout << "vr=" << vr << std::endl;
+		std::cout << "m1i=" << m1i << std::endl;
+		std::cout << "ii=" << ii << std::endl;
+		std::cout << "jr=" << jr << std::endl << std::endl << std::endl;
+		*/
 	}
 
 	return jr;
@@ -160,9 +206,7 @@ void PhysicsEngine::Init(Camera& camera, MeshDb& meshDb, ShaderDb& shaderDb)
 	rbody3.SetMesh(mesh);
 	rbody3.SetShader(defaultShader);
 
-	rbody4.SetMesh(mesh);
-	rbody4.SetShader(defaultShader);
-
+	upright = rbody1.Orientation();
 	Task3Init();
 
 	// TODO: Get the mesh and shader for rigidy body
@@ -187,7 +231,7 @@ void PhysicsEngine::Task1Update(float deltaTime, float totalTime)
 	vec3 v = rbody1.Velocity();
 	
 	Force::Gravity(rbody1);
-	Force::Drag(rbody1, vec3{ 0 });
+	Force::Drag(rbody1, vec3(0.0f));
 
 	vec3 acceleration = rbody1.AccumulatedForce() / rbody1.Mass();
 
@@ -225,7 +269,7 @@ void PhysicsEngine::Task2Update(float deltaTime, float totalTime)
 
 	vec3 p = rbody2.Position(), v = rbody3.Velocity();
 
-	Force::Drag(rbody2, vec3{ 0 });
+	Force::Drag(rbody2, vec3(0.0f));
 
 	vec3 acceleration = rbody2.AccumulatedForce() / rbody2.Mass();
 
@@ -245,7 +289,7 @@ void PhysicsEngine::Task2Update(float deltaTime, float totalTime)
 
 	p = rbody3.Position(), v = rbody3.Velocity();
 
-	Force::Drag(rbody3, vec3{ 0 });
+	Force::Drag(rbody3, vec3(0.0f));
 
 	acceleration = rbody3.AccumulatedForce() / rbody3.Mass();
 
@@ -265,42 +309,154 @@ void PhysicsEngine::Task2Display(const mat4& viewMatrix, const mat4& projMatrix)
 
 void PhysicsEngine::Task3Init()
 {
-	rbody4.SetColor(vec4(0.3f, 0.3f, 0.8f, 1.0f));
-	rbody4.SetPosition(vec3(0, 5, 0));
-	rbody4.SetScale(vec3(1, 3, 1));
-	rbody4.SetVelocity(vec3(0.0f));
-	rbody4.SetAngularVelocity(vec3(0.0f));
+	rbody1.SetScale(vec3(1, 3, 1));
+	rbody1.SetColor(vec4(0.3f, 0.3f, 0.8f, 1.0f));
+	rbody1.SetCoefficientOfRestitution(0.7f);
+	rbody1.SetMass(2.0f);
+
+	rbody1.SetOrientation(upright);
+	rbody1.SetPosition(vec3(0.0f, 3.0f, 0.0f));
+	rbody1.SetVelocity(vec3(2.0f, 0.0f, 0.0f));
+	rbody1.SetAngularVelocity(vec3(0.0f));
 }
 
 void PhysicsEngine::Task3Update(float deltaTime, float totalTime)
 {
-	rbody4.ClearForcesImpulses();
+	rbody1.ClearForcesImpulses();
 
-	//CollisionImpulse(rbody4, 0.8f);
+	vec3 p = rbody1.Position();
+	vec3 v = rbody1.Velocity();
+	vec3 w = rbody1.AngularVelocity();
 
-	vec3 p = rbody4.Position();
-	vec3 v = rbody4.Velocity();
+	Force::Gravity(rbody1);
+	Force::Drag(rbody1, vec3(0.0f));
 
-	Force::Gravity(rbody4);
-	Force::Drag(rbody4, vec3{ 0 });
-
-	vec3 acceleration = rbody4.AccumulatedForce() / rbody4.Mass();
-
-	SymplecticEuler(p, v, rbody4.Mass(), acceleration, rbody4.AccumulatedImpulse(), deltaTime);
-	Integrate(rbody4, deltaTime, vec3(0, 0, 0));
-
-	float jr = CollisionImpulseJr(rbody4, 0.8f);
+	vec3 acceleration = rbody1.AccumulatedForce() / rbody1.Mass();
+	vec3 currentPos = p;
 	
-	v += (jr / rbody4.Mass()) * vec3(0, 1, 0);
+	v += (1.0f / rbody1.Mass()) * (acceleration * deltaTime);
 	p += v * deltaTime;
 
-	rbody4.SetPosition(p);
-	rbody4.SetVelocity(v);
+	rbody1.Translate(p - currentPos);
+	Integrate(rbody1, deltaTime, vec3(0.0f));
+
+	vec3 floorN = vec3(0.0f, 1.0f, 0.0f);
+	vec3 lowestPoint = vec3(0.0f);
+	float jr = CollisionImpulseJr(rbody1, lowestPoint);
+
+	v += (jr / rbody1.Mass()) * floorN;
+	w += jr * rbody1.InverseInertia() * cross(normalize(lowestPoint - p), floorN);
+
+	if (totalTime == 2.0f)
+	{
+		v += vec3(-v.x, 0.0f, 0.0f);
+	}
+
+	rbody1.SetVelocity(v);
+	rbody1.SetAngularVelocity(w);
 }
 
 void PhysicsEngine::Task3Display(const mat4& viewMatrix, const mat4& projMatrix)
 {
-	rbody4.Draw(viewMatrix, projMatrix);
+	rbody1.Draw(viewMatrix, projMatrix);
+}
+
+void PhysicsEngine::Task4Init()
+{
+	rbody1.SetScale(vec3(1, 3, 1));
+	rbody1.SetColor(vec4(0.3f, 0.3f, 0.8f, 1.0f));
+	rbody1.SetCoefficientOfRestitution(0.7f);
+	rbody1.SetMass(2.0f);
+
+	rbody1.SetOrientation(upright);
+	rbody1.SetPosition(vec3(0.0f, 8.0f, 0.0f));
+	rbody1.SetVelocity(vec3(0.0f, 0.0f, 0.0f));
+	rbody1.SetAngularVelocity(vec3(0.0f));
+}
+
+void PhysicsEngine::Task4Update(float deltaTime, float totalTime)
+{
+	rbody1.ClearForcesImpulses();
+
+	vec3 p = rbody1.Position();
+	vec3 v = rbody1.Velocity();
+	vec3 w = rbody1.AngularVelocity();
+
+	Force::Gravity(rbody1);
+	Force::Drag(rbody1, vec3(0.0f));
+
+	vec3 acceleration = rbody1.AccumulatedForce() / rbody1.Mass();
+	vec3 currentPos = p;
+	
+	v += (1.0f / rbody1.Mass()) * (acceleration * deltaTime);
+	p += v * deltaTime;
+
+	rbody1.Translate(p - currentPos);
+	Integrate(rbody1, deltaTime, vec3(0.0f));
+
+	vec3 floorN = vec3(0.0f, 1.0f, 0.0f);
+	vec3 lowestPoint = vec3(0.0f);
+	float jr = CollisionImpulseJr(rbody1, lowestPoint);
+
+	v += (jr / rbody1.Mass()) * floorN;
+	w += jr * rbody1.InverseInertia() * cross(normalize(lowestPoint - p), floorN);
+
+	rbody1.SetVelocity(v);
+	rbody1.SetAngularVelocity(w);
+}
+
+void PhysicsEngine::Task4Display(const mat4& viewMatrix, const mat4& projMatrix)
+{
+	rbody1.Draw(viewMatrix, projMatrix);
+}
+
+void PhysicsEngine::Task5Init()
+{
+	rbody1.SetScale(vec3(1, 3, 1));
+	rbody1.SetColor(vec4(0.3f, 0.3f, 0.8f, 1.0f));
+	rbody1.SetCoefficientOfRestitution(1.0f);
+	rbody1.SetMass(2.0f);
+
+	rbody1.SetOrientation(upright);
+	rbody1.SetPosition(vec3(0.0f, 8.0f, 0.0f));
+	rbody1.SetVelocity(vec3(0.0f, 0.0f, 0.0f));
+	rbody1.SetAngularVelocity(vec3(0.0f, 0.0f, 0.5f));
+}
+
+void PhysicsEngine::Task5Update(float deltaTime, float totalTime)
+{
+	rbody1.ClearForcesImpulses();
+
+	vec3 p = rbody1.Position();
+	vec3 v = rbody1.Velocity();
+	vec3 w = rbody1.AngularVelocity();
+
+	Force::Gravity(rbody1);
+	Force::Drag(rbody1, vec3(0.0f));
+
+	vec3 acceleration = rbody1.AccumulatedForce() / rbody1.Mass();
+	vec3 currentPos = p;
+	
+	v += (1.0f / rbody1.Mass()) * (acceleration * deltaTime);
+	p += v * deltaTime;
+
+	rbody1.Translate(p - currentPos);
+	Integrate(rbody1, deltaTime, vec3(0.0f));
+
+	vec3 floorN = vec3(0.0f, 1.0f, 0.0f);
+	vec3 lowestPoint = vec3(0.0f);
+	float jr = CollisionImpulseJr(rbody1, lowestPoint);
+
+	v += (jr / rbody1.Mass()) * floorN;
+	w += jr * rbody1.InverseInertia() * cross(normalize(lowestPoint - p), floorN);
+
+	rbody1.SetVelocity(v);
+	rbody1.SetAngularVelocity(w);
+}
+
+void PhysicsEngine::Task5Display(const mat4& viewMatrix, const mat4& projMatrix)
+{
+	rbody1.Draw(viewMatrix, projMatrix);
 }
 
 // This is called every frame
@@ -319,6 +475,12 @@ void PhysicsEngine::Update(float deltaTime, float totalTime)
 			break;
 		case Task3:
 			Task3Update(deltaTime, totalTime);
+			break;
+		case Task4:
+			Task4Update(deltaTime, totalTime);
+			break;
+		case Task5:
+			Task5Update(deltaTime, totalTime);
 			break;
 		}
 	}
@@ -341,6 +503,12 @@ void PhysicsEngine::Display(const mat4& viewMatrix, const mat4& projMatrix)
 	case Task3:
 		Task3Display(viewMatrix, projMatrix);
 		break;
+	case Task4:
+		Task4Display(viewMatrix, projMatrix);
+		break;
+	case Task5:
+		Task5Display(viewMatrix, projMatrix);
+		break;
 	}
 }
 
@@ -362,6 +530,16 @@ void PhysicsEngine::HandleInputKey(int keyCode, bool pressed)
 		printf("Key 3 was %s\n", pressed ? "pressed" : "released");
 		Task3Init();
 		activeDemo = Task3;
+		break;
+	case GLFW_KEY_4:
+		printf("Key 4 was %s\n", pressed ? "pressed" : "released");
+		Task4Init();
+		activeDemo = Task4;
+		break;
+	case GLFW_KEY_5:
+		printf("Key 5 was %s\n", pressed ? "pressed" : "released");
+		Task5Init();
+		activeDemo = Task5;
 		break;
 	case GLFW_KEY_P:
 		printf("Key P was %s\n", pressed ? "pressed" : "released");

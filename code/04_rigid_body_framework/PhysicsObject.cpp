@@ -23,11 +23,14 @@ void PhysicsBody::Draw(const glm::mat4& viewMatrix, const glm::mat4& projectionM
 
 glm::mat3 RigidBody::InverseInertia()
 {
-	glm::mat3 iTensor = {
+	glm::mat3 inertiaTensor = {
 		((1.0f / 12.0f) * Mass()) * (pow(6, 2) + pow(2, 2)), 0.0f, 0.0f,
 		0.0f, ((1.0f / 12.0f) * Mass()) * (pow(2, 2) + pow(2, 2)), 0.0f,
-		0.0f, 0.0f, ((1.0f / 12.0f) * Mass()) * (pow(2, 2) + pow(4, 2))
+		0.0f, 0.0f, ((1.0f / 12.0f) * Mass()) * (pow(2, 2) + pow(6, 2))
 	};
 
-	return iTensor;
+	glm::mat3 R = Orientation();
+	glm::mat3 inverseInertia = R * inverse(inertiaTensor) * glm::transpose(R);
+
+	return inverseInertia;
 }
