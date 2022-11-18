@@ -76,7 +76,7 @@ vec3 BlowDryerForce(const vec3& particlePosition, float cone_y_base, float cone_
 	return force;
 }
 
-void PhysicsEngine::Task1Init()
+void PhysicsEngine::StandardInit()
 {
 	task1Particle.SetColor(vec4(1, 0, 0, 1));
 	task1Particle.SetPosition(vec3(0, 5, 0));
@@ -84,7 +84,7 @@ void PhysicsEngine::Task1Init()
 	task1Particle.SetVelocity(vec3(1.0f, 0.0f, 5.0f));
 }
 
-void PhysicsEngine::Task1Update(float deltaTime, float totalTime)
+void PhysicsEngine::StandardUpdate(float deltaTime, float totalTime)
 {
 	auto impulse = CollisionImpulse(task1Particle, glm::vec3(0.0f, 5.0f, 0.0f), 5.0f, 1.0f);
 
@@ -101,12 +101,12 @@ void PhysicsEngine::Task1Update(float deltaTime, float totalTime)
 	task1Particle.SetVelocity(v);
 }
 
-void PhysicsEngine::Task1Display(const mat4& viewMatrix, const mat4& projMatrix)
+void PhysicsEngine::StandardDisplay(const mat4& viewMatrix, const mat4& projMatrix)
 {
 	task1Particle.Draw(viewMatrix, projMatrix);
 }
 
-void PhysicsEngine::Task2Init()
+void PhysicsEngine::ExtendedInit()
 {
 	task2Particles[0].SetColor(vec4(1, 1, 1, 1));
 	task2Particles[0].SetPosition(vec3(-3, 5, 0));
@@ -129,7 +129,7 @@ void PhysicsEngine::Task2Init()
 	task2Particles[0].SetVelocity(vec3(0.0f, 0.0f, 0.0f));
 }
 
-void PhysicsEngine::Task2Update(float deltaTime, float totalTime)
+void PhysicsEngine::ExtendedUpdate(float deltaTime, float totalTime)
 {
 	task2Particles[0].SetPosition(vec3(-3, 5, 0));
 
@@ -165,7 +165,7 @@ void PhysicsEngine::Task2Update(float deltaTime, float totalTime)
 	}
 }
 
-void PhysicsEngine::Task2Display(const mat4& viewMatrix, const mat4& projMatrix)
+void PhysicsEngine::ExtendedDisplay(const mat4& viewMatrix, const mat4& projMatrix)
 {
 	for (Particle &particle : task2Particles)
 	{
@@ -209,10 +209,10 @@ void PhysicsEngine::LoadDemo(Demo task)
 	{
 	default:
 	case Task1:
-		Task1Init();
+		StandardInit();
 		break;
 	case Task2:
-		Task2Init();
+		ExtendedInit();
 		break;
 	case Task3:
 		Task3Init();
@@ -270,10 +270,10 @@ void PhysicsEngine::Update(float deltaTime, float totalTime)
 	{
 	default:
 	case Task1:
-		Task1Update(deltaTime, totalTime);
+		StandardUpdate(deltaTime, totalTime);
 		break;
 	case Task2:
-		Task2Update(deltaTime, totalTime);
+		ExtendedUpdate(deltaTime, totalTime);
 		break;
 	case Task3:
 		Task3Update(deltaTime, totalTime);
@@ -291,10 +291,10 @@ void PhysicsEngine::Display(const mat4& viewMatrix, const mat4& projMatrix)
 	{
 	default:
 	case Task1:
-		Task1Display(viewMatrix, projMatrix);
+		StandardDisplay(viewMatrix, projMatrix);
 		break;
 	case Task2:
-		Task2Display(viewMatrix, projMatrix);
+		ExtendedDisplay(viewMatrix, projMatrix);
 		break;
 	case Task3:
 		Task3Display(viewMatrix, projMatrix);

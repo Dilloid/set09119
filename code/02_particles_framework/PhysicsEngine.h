@@ -21,13 +21,13 @@ class PhysicsEngine
 {
 public:
 
-	void Task1Init();
-	void Task1Update(float deltaTime, float totalTime);
-	void Task1Display(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+	void StandardInit();
+	void StandardUpdate(float deltaTime, float totalTime);
+	void StandardDisplay(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
 
-	void Task2Init();
-	void Task2Update(float deltaTime, float totalTime);
-	void Task2Display(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
+	void ExtendedInit();
+	void ExtendedUpdate(float deltaTime, float totalTime);
+	void ExtendedDisplay(const glm::mat4& viewMatrix, const glm::mat4& projMatrix);
 
 	void Task3Init();
 	void Task3Update(float deltaTime, float totalTime);

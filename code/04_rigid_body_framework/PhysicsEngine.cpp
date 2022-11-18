@@ -212,7 +212,7 @@ void PhysicsEngine::Init(Camera& camera, MeshDb& meshDb, ShaderDb& shaderDb)
 	camera = Camera(vec3(0, 5, 10));
 }
 
-void PhysicsEngine::StandardInit()
+void PhysicsEngine::Task1Init()
 {
 	rbody1.SetColor(vec4(1, 0, 0, 1));
 	rbody1.SetPosition(vec3(0, 5, 0));
@@ -220,7 +220,7 @@ void PhysicsEngine::StandardInit()
 	rbody1.SetVelocity(vec3(1.0f, 0.0f, 5.0f));
 }
 
-void PhysicsEngine::StandardUpdate(float deltaTime, float totalTime)
+void PhysicsEngine::Task1Update(float deltaTime, float totalTime)
 {
 	rbody1.ClearForcesImpulses();
 
@@ -240,12 +240,12 @@ void PhysicsEngine::StandardUpdate(float deltaTime, float totalTime)
 	rbody1.SetVelocity(v);
 }
 
-void PhysicsEngine::StandardDisplay(const mat4& viewMatrix, const mat4& projMatrix)
+void PhysicsEngine::Task1Display(const mat4& viewMatrix, const mat4& projMatrix)
 {
 	rbody1.Draw(viewMatrix, projMatrix);
 }
 
-void PhysicsEngine::ExtendedInit()
+void PhysicsEngine::Task2Init()
 {
 	rbody2.SetColor(vec4(1, 0, 0, 1));
 	rbody2.SetPosition(vec3(-2, 5, 0));
@@ -257,7 +257,7 @@ void PhysicsEngine::ExtendedInit()
 	rbody3.SetScale(vec3(1, 2, 1));
 }
 
-void PhysicsEngine::ExtendedUpdate(float deltaTime, float totalTime)
+void PhysicsEngine::Task2Update(float deltaTime, float totalTime)
 {
 	rbody2.ClearForcesImpulses();
 	rbody3.ClearForcesImpulses();
@@ -300,7 +300,7 @@ void PhysicsEngine::ExtendedUpdate(float deltaTime, float totalTime)
 	rbody3.SetVelocity(v);
 }
 
-void PhysicsEngine::ExtendedDisplay(const mat4& viewMatrix, const mat4& projMatrix)
+void PhysicsEngine::Task2Display(const mat4& viewMatrix, const mat4& projMatrix)
 {
 	rbody2.Draw(viewMatrix, projMatrix);
 	rbody3.Draw(viewMatrix, projMatrix);
@@ -467,10 +467,10 @@ void PhysicsEngine::Update(float deltaTime, float totalTime)
 		{
 		default:
 		case Task1:
-			StandardUpdate(deltaTime, totalTime);
+			Task1Update(deltaTime, totalTime);
 			break;
 		case Task2:
-			ExtendedUpdate(deltaTime, totalTime);
+			Task2Update(deltaTime, totalTime);
 			break;
 		case Task3:
 			Task3Update(deltaTime, totalTime);
@@ -494,10 +494,10 @@ void PhysicsEngine::Display(const mat4& viewMatrix, const mat4& projMatrix)
 	{
 	default:
 	case Task1:
-		StandardDisplay(viewMatrix, projMatrix);
+		Task1Display(viewMatrix, projMatrix);
 		break;
 	case Task2:
-		ExtendedDisplay(viewMatrix, projMatrix);
+		Task2Display(viewMatrix, projMatrix);
 		break;
 	case Task3:
 		Task3Display(viewMatrix, projMatrix);
@@ -517,12 +517,12 @@ void PhysicsEngine::HandleInputKey(int keyCode, bool pressed)
 	{
 	case GLFW_KEY_1:
 		printf("Key 1 was %s\n", pressed ? "pressed" : "released");
-		StandardInit();
+		Task1Init();
 		activeDemo = Task1;
 		break;
 	case GLFW_KEY_2:
 		printf("Key 2 was %s\n", pressed ? "pressed" : "released");
-		ExtendedInit();
+		Task2Init();
 		activeDemo = Task2;
 		break;
 	case GLFW_KEY_3:
