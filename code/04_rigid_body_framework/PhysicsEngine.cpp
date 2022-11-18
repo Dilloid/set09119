@@ -42,7 +42,7 @@ void Integrate(RigidBody& rb, float dt, vec3 angAcc)
 	// dt: deltaTime , angAcc : angular acceleration
 	// integration ( rotation )
 	auto newAngVel = rb.AngularVelocity() + dt * angAcc;
-	//rb.SetAngularVelocity(newAngVel);
+	rb.SetAngularVelocity(newAngVel);
 
 	// create skew symmetric matrix for w
 	glm::mat3 angVelSkew = glm::matrixCross3(newAngVel);
@@ -102,7 +102,9 @@ float CollisionImpulseJr(RigidBody& rb, vec3& lowestPoint)
 
 		if (worldPos.y < 0.0f)
 		{
-			if (worldPos.y == lowestPoint.y)
+			float threshold = 0.005f;
+
+			if (worldPos.y > lowestPoint.y - threshold && worldPos.y < lowestPoint.y + threshold)
 				contactPoints.push_back(worldPos);
 
 			if (worldPos.y < lowestPoint.y)
@@ -111,7 +113,6 @@ float CollisionImpulseJr(RigidBody& rb, vec3& lowestPoint)
 				contactPoints.push_back(worldPos);
 				lowestPoint = worldPos;
 			}
-
 		}
 	}
 
@@ -144,17 +145,15 @@ float CollisionImpulseJr(RigidBody& rb, vec3& lowestPoint)
 
 		float e = rb.CoefficientOfRestitution();
 
-		vec3 v2 = vec3(0.0f);
-		vec3 w2 = vec3(0.0f);
-		vec3 r2 = normalize(vec3(0.0f) - lowestPoint);
-
 		vec3 v1 = rb.Velocity();
 		vec3 w1 = rb.AngularVelocity();
-		vec3 r1 = normalize(rb.Position() - lowestPoint);
-		vec3 vr = v1 + cross(w1, r1);
+		vec3 r1 = lowestPoint - rb.Position();
 
-		// vec3 vr = v2 + cross(w2, r2) - (v1 + cross(w1, r1));
-		// This version of the formula made the rigidbody rocket into the air after each collision
+		vec3 v2 = vec3(0.0f);
+		vec3 w2 = vec3(0.0f);
+		vec3 r2 = lowestPoint - vec3(0.0f);
+
+		vec3 vr = v1 + cross(w1, r1) - (v2 + cross(w2, r2));
 
 		vec3 floorN = vec3(0.0f, 1.0f, 0.0f);
 
@@ -213,7 +212,7 @@ void PhysicsEngine::Init(Camera& camera, MeshDb& meshDb, ShaderDb& shaderDb)
 	camera = Camera(vec3(0, 5, 10));
 }
 
-void PhysicsEngine::Task1Init()
+void PhysicsEngine::StandardInit()
 {
 	rbody1.SetColor(vec4(1, 0, 0, 1));
 	rbody1.SetPosition(vec3(0, 5, 0));
@@ -221,7 +220,7 @@ void PhysicsEngine::Task1Init()
 	rbody1.SetVelocity(vec3(1.0f, 0.0f, 5.0f));
 }
 
-void PhysicsEngine::Task1Update(float deltaTime, float totalTime)
+void PhysicsEngine::StandardUpdate(float deltaTime, float totalTime)
 {
 	rbody1.ClearForcesImpulses();
 
@@ -241,12 +240,12 @@ void PhysicsEngine::Task1Update(float deltaTime, float totalTime)
 	rbody1.SetVelocity(v);
 }
 
-void PhysicsEngine::Task1Display(const mat4& viewMatrix, const mat4& projMatrix)
+void PhysicsEngine::StandardDisplay(const mat4& viewMatrix, const mat4& projMatrix)
 {
 	rbody1.Draw(viewMatrix, projMatrix);
 }
 
-void PhysicsEngine::Task2Init()
+void PhysicsEngine::ExtendedInit()
 {
 	rbody2.SetColor(vec4(1, 0, 0, 1));
 	rbody2.SetPosition(vec3(-2, 5, 0));
@@ -258,7 +257,7 @@ void PhysicsEngine::Task2Init()
 	rbody3.SetScale(vec3(1, 2, 1));
 }
 
-void PhysicsEngine::Task2Update(float deltaTime, float totalTime)
+void PhysicsEngine::ExtendedUpdate(float deltaTime, float totalTime)
 {
 	rbody2.ClearForcesImpulses();
 	rbody3.ClearForcesImpulses();
@@ -301,7 +300,7 @@ void PhysicsEngine::Task2Update(float deltaTime, float totalTime)
 	rbody3.SetVelocity(v);
 }
 
-void PhysicsEngine::Task2Display(const mat4& viewMatrix, const mat4& projMatrix)
+void PhysicsEngine::ExtendedDisplay(const mat4& viewMatrix, const mat4& projMatrix)
 {
 	rbody2.Draw(viewMatrix, projMatrix);
 	rbody3.Draw(viewMatrix, projMatrix);
@@ -420,7 +419,7 @@ void PhysicsEngine::Task5Init()
 	rbody1.SetOrientation(upright);
 	rbody1.SetPosition(vec3(0.0f, 8.0f, 0.0f));
 	rbody1.SetVelocity(vec3(0.0f, 0.0f, 0.0f));
-	rbody1.SetAngularVelocity(vec3(0.0f, 0.0f, 0.5f));
+	rbody1.SetAngularVelocity(vec3(0.1f));
 }
 
 void PhysicsEngine::Task5Update(float deltaTime, float totalTime)
@@ -468,10 +467,10 @@ void PhysicsEngine::Update(float deltaTime, float totalTime)
 		{
 		default:
 		case Task1:
-			Task1Update(deltaTime, totalTime);
+			StandardUpdate(deltaTime, totalTime);
 			break;
 		case Task2:
-			Task2Update(deltaTime, totalTime);
+			ExtendedUpdate(deltaTime, totalTime);
 			break;
 		case Task3:
 			Task3Update(deltaTime, totalTime);
@@ -495,10 +494,10 @@ void PhysicsEngine::Display(const mat4& viewMatrix, const mat4& projMatrix)
 	{
 	default:
 	case Task1:
-		Task1Display(viewMatrix, projMatrix);
+		StandardDisplay(viewMatrix, projMatrix);
 		break;
 	case Task2:
-		Task2Display(viewMatrix, projMatrix);
+		ExtendedDisplay(viewMatrix, projMatrix);
 		break;
 	case Task3:
 		Task3Display(viewMatrix, projMatrix);
@@ -518,12 +517,12 @@ void PhysicsEngine::HandleInputKey(int keyCode, bool pressed)
 	{
 	case GLFW_KEY_1:
 		printf("Key 1 was %s\n", pressed ? "pressed" : "released");
-		Task1Init();
+		StandardInit();
 		activeDemo = Task1;
 		break;
 	case GLFW_KEY_2:
 		printf("Key 2 was %s\n", pressed ? "pressed" : "released");
-		Task2Init();
+		ExtendedInit();
 		activeDemo = Task2;
 		break;
 	case GLFW_KEY_3:

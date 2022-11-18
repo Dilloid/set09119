@@ -39,7 +39,6 @@ glm::mat3 RigidBody::InverseInertia()
 		0.0f, 0.0f, massDivided * (w2 + h2)
 	};
 
-
 	glm::mat3 R = Orientation();
 	glm::mat3 inverseInertia = R * inverse(inertiaTensor) * glm::transpose(R);
 
